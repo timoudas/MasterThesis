@@ -1,0 +1,196 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+```{r}
+library(quantmod)
+library(tsDyn)
+library(urca)
+library(vars)
+library(tseries)
+library(seasonal)
+library(BMR)
+```
+
+```{r}
+##ADF-test function
+globalVariables(c("ur.df"))
+ADF.test <- function(data){
+  ADF <- function(type, data) {
+    result1 <- ur.df(data,
+                     type = type,
+                     lags = 3*frequency(data),
+                     selectlags = "AIC")
+    result2 <- cbind(t(result1@teststat),
+                     result1@cval,
+                     coefficients(result1@testreg)["z.lag.1", 1], result1@lags)
+    round(result2, 2)
+  }
+  types   <- c("trend", "drift", "none")
+  result3 <- apply(t(types), 2, ADF, data)
+  cat(rep("#", 20),'\n')
+  cat(rep("#", 20),'\n')
+  cat("Augmented Dickey--Fuller test\n")
+  cat(rep("#", 20),'\n')
+  cat("type:", "  trend ", "drift ", "none\n")
+  cat("AR1:   ", result3[[1]][1, 5] + 1, " ", result3[[2]][1, 5] + 1, " ", result3[[3]][5] + 1, "\n")
+  cat("lags:  ", result3[[1]][1, 6], "   ", result3[[2]][1, 6], "   ", result3[[3]][6], "\n")
+  cat(rep("#", 20),'\n')
+  result5 <- rbind(result3[[1]][c(1,3),1:4],
+                   result3[[2]][1:2,1:4],
+                   result3[[3]][1:4])
+  rownames(result5)[5] <- "tau1" 
+  result5
+}
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+#Constant Price Gross Domestic Product in Sweden, Seasonally Adjusted
+#Percent Change from Year Ago, Quarterly, Seasonally Adjusted
+getSymbols("SWEGDPRQPSMEI", src = "FRED")
+BNP <- ts(as.ts(SWEGDPRQPSMEI), start = c(1961, 1), frequency = 4)
+
+#Unemployment Rate: Aged 15-64: All Persons for Sweden
+#Percent, Quarterly, Seasonally Adjusted
+getSymbols("LRUN64TTSEQ156S", src = "FRED")
+U <- ts(as.ts(LRUN64TTSEQ156S), start = c(2001, 1), frequency = 4)
+
+ 
+#Consumer Price Index: Total All Items for Sweden Growth Rate Previous Period,
+#Not Seasonally Adjusted
+getSymbols("CPALTT01SEQ657N", src = "FRED")
+CPI <- ts(as.ts(CPALTT01SEQ657N), start = c(1960, 1), frequency = 4)
+
+#3-Month or 90-day Rates and Yields: Treasury Securities for Sweden
+#Percent,Not Seasonally Adjusted
+getSymbols("IR3TTS01SEQ156N", src = "FRED")
+INT <- ts(as.ts(IR3TTS01SEQ156N), start = c(1982, 1), frequency = 4)
+```
+```{r}
+# seasonal adjust time series using X11. 
+CPI1 <- final(seas(as.ts((CPI),freq=4)))
+```
+
+
+Import CLIFS index and aggregate up to quarterly series
+```{r}
+CLIF_INDEX <- read.csv('CLIFS.csv', header = FALSE)
+CLIF_mts <- ts(CLIF_INDEX[2], start = c(1970, 1), frequency = 12)
+CLIF_qts = aggregate(CLIF_mts, nfrequency = 4)
+```
+
+Bi-variate data ORDERING: U, BNP, CPI1, INT
+```{r}
+
+data <- ts.intersect(CLIF_qts, U, BNP, INT)
+colnames(data) <-c("CLIF", "U", "BNP", "INT")
+```
+
+```{r}
+plot(data)
+```
+
+
+ADF TEST
+```{r}
+ADF.test(data[, 'BNP']) #Stationaty
+ADF.test(data[, 'CLIF']) #Stationary
+ADF.test(data[, 'U']) #Unitroot
+ADF.test(data[, 'INT']) #Unitroot
+summary(ur.kpss(data[,"INT"])) #Stationary
+```
+
+Diff data
+```{r}
+sdata <- ts.intersect(CLIF_qts, diff(U), BNP, INT)
+colnames(sdata) <-c("CLIF", "DU", "BNP", "INT")
+```
+
+
+```{r}
+VARselect(sdata, lag.max = 10, season = NULL, exogen = NULL)
+```
+
+
+```{r}
+#bnp <- data[, 'BNP']
+#thresh<- data[, 'CLIF_qts']
+
+#model <- TVAR(diff.data, lag=4, nthresh=1, thDelay=1, trim=0.15, mTh=1, plot=TRUE)
+```
+
+
+We firstly need to create a model object that will store all the results from the estimation procedure. We can call this object bvar_obj.
+```{r}
+bvar_obj <- new(bvarm)
+```
+
+The basic structure of the model and the data need to be included in the build part of this object. In this case we are going to make use of a VAR(4) with a constant and the data that we will be using is stored in columns two through four.
+
+```{r}
+bvar_obj$build(data,
+               TRUE, # constant
+               4) # lags
+```
+
+To use random-walk priors for the non-stationary variables, we set the prior mean values to unity before estimating the model parameters.
+c("CLIF", "U", "BNP", "INT")
+```{r}
+prior <- c(0, 1, 0, 1)
+```
+
+To complete the construction of the prior we need to select values for the hyperparameters. In this case we are going to follow @Canova:2007 and set the first hyperparameter, λ, to 0.2 and the second hyperparameter, θ, to 0.5. He also recommends the values that were used for the second and third hyperparameters, HP2 and HP3. The other elements take on the default vaules that are taken from @Koop:2010.
+
+
+```{r}
+bvar_obj$prior(prior, # prior mean value
+               1, # var_type
+               1, # decay_type
+               0.2, # HP1
+               0.5, # HP2
+               10^5, # HP3
+               1.0) # HP4
+```
+
+The final requirement is to specify the number of draws that are required for the Gibbs sampler, which we are setting to 10,000 in this case.
+
+```{r}
+bvar_obj$gibbs(10000)
+
+plot(bvar_obj, var_names = colnames(data), save = FALSE)
+
+class(bvar_obj)
+
+
+irf(bvar_obj, 20, var_names = colnames(data), save = FALSE)
+
+f <- forecast(bvar_obj, shocks = TRUE, var_names = colnames(data), 
+    back_data = 12, save = FALSE)
+
+irf(bvar_obj, impulse = "CLIF", response = "U",
+           n.ahead = 30, ortho = TRUE, runs = 5000, seed = 12345)
+
+
+predict <- forecast(bvar_obj, shocks = TRUE, var_names = colnames(data), save = FALSE)
+
+```
+
+
+
+
+
+
+
+
+
