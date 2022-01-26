@@ -30,6 +30,4 @@ summary(ur.kpss(sample[, 'INT'])) #NOT STATIONARY
 ADF.test(diff(sample[, 'INT'])) #STATIONARY
 summary(ur.kpss(diff(sample[, 'INT']))) #STATIONARY
 
-#Modeldata
-model_data <- window(ts.intersect(CLIF_qts, BNP, CPI1,  diff(INT1)), start=c(1993,2))
-colnames(model_data) <-c("CLIF", "BNP", 'CPI', "DINT")
+
