@@ -1,5 +1,5 @@
-matlab/results/
-matlab/results_sign/
-matlab/results_no_prior/
-matlab/results_orderings/
-matlab/results_iv/
+/matlab/results/
+/matlab/results_sign/
+/matlab/results_no_prior/
+/matlab/results_orderings/
+/matlab/results_iv/
