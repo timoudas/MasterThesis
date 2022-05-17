@@ -1,0 +1,33 @@
+Looks imporved from last time
+
+Major - exogeniety 
+Suggestion: Two things
+1. Use an instrument
+2. Think about a way of writing it more sceptically
+2. I'm aware of the limitations 
+2. Weeknessess - I'm willing to accept 
+2. What can we interprete
+2. Problem with choelesky
+2. Inklude scptism in result
+
+SIGN RESTRICTION NOT SOLID
+
+Should have a bit more of setup the VAR-model
+VAR-section
+
+How different is it from Stockhammar & Österhammanr 
+- In prev lit and at the end compare with prev literature 
+in conclusions
+
+When finilizing:
+Every table and figure reference
+Explanatory of the data - summary stats
+Ordering of variables - and plots (CONSISTENCY)
+Include LAG - in appendix
+
+Final thing: Do with a few more citations if i express an 
+ecnomic idea
+
+REFERENCES
+
+firm data
