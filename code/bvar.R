@@ -2,10 +2,11 @@ library(bvartools)
 source('stationarity_tests.R')
 library(vars)
 
+#GDP -> CPI -> DINT -> SFSI
+md <- model_data.SFI[,c(2, 3, 4, 1)]
 
-
-priordata<- window(model_data.SFI, start=c(1995, 4), end=c(2000,3)) # Subset of interest
-mydata <- window(model_data.SFI, start=c(2000, 4)) # prior-data
+priordata<- window(md, start=c(1995, 4), end=c(2000,3)) # Subset of interest
+mydata <- window(md, start=c(2000, 4)) # prior-data
 
 
 ################################################################################
@@ -47,12 +48,16 @@ store <- iter - burnin
 tt <- ncol(y) # Number of observations
 k <- nrow(y) # Number of endogenous variables
 m <- k * nrow(x) # Number of estimated coefficients
+
 #Set priors
 a_mu_prior <- matrix(0, m) # Vector of prior parameter means
 a_v_i_prior <- diag(1, m) # Inverse of the prior covariance matrix(ie the precision)
 u_sigma_df_prior <- 6 # Prior degrees of freedom
 u_sigma_scale_prior <- diag(1, k) # Prior covariance matrix
 u_sigma_df_post <- tt + u_sigma_df_prior # Posterior degrees of freedom
+
+
+
 # Initial values
 u_sigma_i <- solve(u_sigma_freq)
 # Data containers for posterior draws
@@ -103,3 +108,17 @@ bvar_est <- bvar(y = data$data$Y, x = data$data$Z, A = draws_a[1:48,],
 bvar_est1 <- thin_posterior(bvar_est, thin = 15)
 
 summary(bvar_est1)                                     
+
+
+FEIR <- irf(bvar_est1, impulse = "SFSI", response = "BNP", n.ahead = 20, ci = 0.90, type = "oir")
+FEIR1 <- irf(bvar_est1, impulse = "SFSI", response = "CPI", n.ahead = 20, ci = 0.90, type = "oir")
+FEIR2 <- irf(bvar_est1, impulse = "SFSI", response = "DINT", n.ahead = 20, ci = 0.90, type = "oir")
+FEIR3 <- irf(bvar_est1, impulse = "SFSI", response = "SFSI", n.ahead = 20, ci = 0.90, type = "oir")
+
+
+
+par(mfrow=c(1,1))
+plot(FEIR3,  
+     main = "",
+     col = 2, 
+)

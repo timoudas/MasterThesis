@@ -2,6 +2,8 @@ library(quantmod)
 library(tseries)
 library(seasonal)
 library("readxl")
+library(ggplot2)
+library(xts)
 
 
 #Constant Price Gross Domestic Product in Sweden, Seasonally Adjusted
@@ -42,6 +44,11 @@ ECB_INDEX <- apply.quarterly(ECB_INDEX, sum) #SUM TO QUATERLY
 ECB_INDEX <- ts(ECB_INDEX$Stressindex, start = c(1999, 3, 26), frequency = 4)
 
 
+DATA_DSFSI <- ts.intersect(diff(SFSI_INDEX), diff(BNP), CPI, INT)
+colnames(DATA_DSFSI) <-c("DSFSI", "DBNP", 'CPI', "INT")
+write.csv(DATA_DSFSI, file="data2.csv")
+
+
 #DATA IN LEVELS WITH RIKSBANK FIN STRESS INDEX
 DATA_SFSI <- ts.intersect(SFSI_INDEX, BNP, CPI,  INT)
 colnames(DATA_SFSI) <-c("SFSI", "BNP", 'CPI', "INT")
@@ -57,3 +64,27 @@ colnames(DATA_CLIF) <-c("CLIF", "BNP", 'CPI', "INT")
 #Sweden let currency float autumn 1992
 DATA_CLIF <- window(DATA_CLIF, start=c(1993,1))
 
+
+SFSI_INDEX_p <- read_excel("../ext_data/stressindex.xlsx", sheet = "SVE")
+SFSI_INDEX_p$Datum <- as.Date(SFSI_INDEX_p$Datum) 
+
+
+
+ggplot(data=SFSI_INDEX_p, aes(x=Datum, y=Stressindex)) +
+    geom_line(color="darkgreen", size=0.5) +
+    ylab("FSI level") +
+    xlab('Date')
+
+
+BANK_INDEX <- read.csv2("bank_index.csv", sep=';', header = TRUE)
+
+BANK_INDEX <- xts(BANK_INDEX, order.by=as.Date(BANK_INDEX$Datum, "%Y-%m-%d"))
+BANK_INDEX$Datum <- NULL
+storage.mode(BANK_INDEX) <- "numeric"
+BANK_INDEX <- apply.quarterly(BANK_INDEX, mean) #SUM TO QUATERLY
+BANK_INDEX <- ts(BANK_INDEX$Stängning, start = c(2000, 3, 31), frequency = 4)
+BANK_INDEX <- final(seas(as.ts((BANK_INDEX),freq=4)))
+SD <- rollapply(data = diff(BANK_INDEX), width=4,FUN=sd) 
+
+Sd_data <- data.frame(Y=as.matrix(SD), date=as.Date(SD))
+write.csv(Sd_data, file = 'bank_vol.csv')

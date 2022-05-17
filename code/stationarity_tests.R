@@ -76,3 +76,10 @@ model_data.CLIFS <- ts.intersect(DATA_CLIF[, 'CLIF'], DATA_CLIF[, 'BNP'], DATA_C
 colnames(model_data.CLIFS) <- c('CLIFS', 'BNP', 'CPI', 'DINT')
 
 
+plot(model_data.SFI[,1], ylab='SFSI')
+
+
+summary(model_data.SFI)
+plot(model_data.SFI[,'SFSI'])
+hist(model_data.SFI[,'SFSI'], breaks=40)
+
